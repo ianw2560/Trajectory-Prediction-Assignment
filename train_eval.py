@@ -52,6 +52,7 @@ parser.add_argument("--num_k", type=int, default=10)
 parser.add_argument("--ped_num_k", type=int, default=50)
 parser.add_argument("--just_x_y", type=bool, default=True)
 parser.add_argument("--minADEloss", type=bool, default=False)
+
 args = parser.parse_args()
 
 
@@ -242,7 +243,6 @@ def test(model, test_dataloader, motion_modes, just_x_y, num_k, ped_num_k):
             # top_k_scores = torch.topk(scores, k=20, dim=-1).values
             # top_k_scores = F.softmax(top_k_scores, dim=-1)
             if just_x_y:
-
                 pred_trajs = pred_trajs.reshape(
                     pred_trajs.shape[0], pred_trajs.shape[1], gt.shape[1], 2
                 )
@@ -510,6 +510,7 @@ print("Best 10th percentile minADE: ", ade_10_percentiles)
 print("Best 10th percentile minFDE: ", fde_10_percentiles)
 print("Best 90th percentile minADE: ", ade_90_percentiles)
 print("Best 90th percentile minFDE: ", fde_90_percentiles)
+print("**************************************************")
 
 # ------------------------------------------------------------------------
 # Plot the ECDF of ADE and FDE
