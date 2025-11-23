@@ -32,9 +32,10 @@ from typing import Tuple
 import pickle
 
 
-
+# ------------------------------------------------------------------------
+# Command line arguments
+# ------------------------------------------------------------------------
 parser = argparse.ArgumentParser() 
-
 parser.add_argument('--num_works', type=int, default=8)
 parser.add_argument('--obs_len', type=int, default=5)
 parser.add_argument('--pred_len', type=int, default=8)
@@ -51,12 +52,7 @@ parser.add_argument('--num_k', type=int, default=10)
 parser.add_argument('--ped_num_k', type=int, default=50)
 parser.add_argument('--just_x_y', type=bool, default=True)
 parser.add_argument('--minADEloss', type=bool, default=False)
-
-
-
-
 args = parser.parse_args()
-
 
 
 class Custom_Dataset(torch.utils.data.dataset.Dataset):#, histsize=None, futsize=None):
@@ -84,14 +80,12 @@ class Custom_Dataset(torch.utils.data.dataset.Dataset):#, histsize=None, futsize
         return torch.FloatTensor(target_traj),\
                 torch.FloatTensor(nei_traj),\
                 torch.FloatTensor(mask_nearest),\
-            
-                
+
 
 class MinADE_loss(nn.Module):
   def __init__(self):
     super(MinADE_loss, self).__init__();
 
-  
   def __call__(self, traj, traj_gt):
     """
     Computes average displacement error for the best trajectory in a set, with respect to ground truth
@@ -108,7 +102,6 @@ class MinADE_loss(nn.Module):
     # complete this part: calculate the average displacement error between ground truth and each predicted trajectory for each element of batch,
     # find the minimum average displacement error over proposed trajectories for each element of the batch
     # average it over batch members and return it as loss value   
-
 
     return err
 
@@ -130,13 +123,14 @@ def get_cls_label(gt, motion_modes, soft_label=True):
     return soft_label, closest_mode_indices
 
 
-
+# ------------------------------------------------------------------------
+# Training function
+# ------------------------------------------------------------------------
 def train(epoch, model, reg_criterion, cls_criterion, optimizer, train_dataloader, motion_modes,just_x_y,num_k,ped_num_k,minADE_loss):
     model.train()
     total_loss = []
 
     for i, (ped_traj,nei_traj,mask_nearest) in enumerate(train_dataloader):
-
 
         ped_obs = ped_traj[:, :args.obs_len]
 
@@ -174,11 +168,6 @@ def train(epoch, model, reg_criterion, cls_criterion, optimizer, train_dataloade
         total_loss.append(loss.item())
         # sys.exit('line 581')
     return total_loss
-
-
-
-
-
 
 
 def test(model, test_dataloader, motion_modes, just_x_y,num_k,ped_num_k):
@@ -248,8 +237,9 @@ def test(model, test_dataloader, motion_modes, just_x_y,num_k,ped_num_k):
     fde = fde / num_traj
     return ade, fde, num_traj, ade_vector, fde_vector
 
-################################################################################ beginning of main ####################################################################################
-
+# ------------------------------------------------------------------------
+# Load training and testing data
+# ------------------------------------------------------------------------
 # Open the pickle file in binary mode for reading
 file_name = './dataset/Nuscenes_data' +'/'+ 'Train_Val_Sets'
 sets = np.load(file_name +'.npz')
@@ -275,8 +265,7 @@ motion_modes_file = args.dataset_path + args.dataset_name +str(args.n_clusters)+
 
 if not os.path.exists(motion_modes_file):
     print('motion modes generating ... ')
-    motion_modes = get_motion_modes_ours(dataset_train, args.obs_len, args.pred_len, args.n_clusters, args.dataset_path, args.dataset_name, args.dataset_dimension, args.just_x_y)
-                                   
+    motion_modes = get_motion_modes_ours(dataset_train, args.obs_len, args.pred_len, args.n_clusters, args.dataset_path, args.dataset_name, args.dataset_dimension, args.just_x_y)                        
     motion_modes = torch.tensor(motion_modes, dtype=torch.float32).cuda()
 
 
@@ -289,23 +278,17 @@ if os.path.exists(motion_modes_file):
     motion_modes = torch.tensor(motion_modes, dtype=torch.float32).cuda()
 
 
-
-#############################################################################################################################
-
-
-
-
+# ------------------------------------------------------------------------
+# Instantiate model
+# ------------------------------------------------------------------------
 model = TrajectoryModel4(in_size=args.dataset_dimension, just_x_y= args.just_x_y, obs_len=5, pred_len=8, embed_size=256, 
 enc_num_layers=2, int_num_layers_list=[2,2], heads=8, forward_expansion=2)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 model = model.cuda()
 model.to(device)
-
-
-
-
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
+
 if args.minADEloss:
     reg_criterion = MinADE_loss().cuda()
 else:
@@ -313,15 +296,8 @@ else:
 
 cls_criterion = torch.nn.CrossEntropyLoss().cuda()
 
-
-
-
 if args.lr_scaling:
-
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30, 49], gamma=0.95)
-
-   
-
 
 min_ade = 99
 min_fde = 99
@@ -336,6 +312,7 @@ for ep in range(args.epoch):
 
     if not os.path.exists(args.checkpoint +'_'+ args.dataset_name +'_n_clusters_' + str(args.n_clusters)  + '_num_K_' +str(args.num_k) + '_minADE_Loss_' + str(args.minADEloss)):
         os.makedirs(args.checkpoint +'_'+ args.dataset_name +'_n_clusters_' + str(args.n_clusters)  + '_num_K_' +str(args.num_k) + '_minADE_Loss_' + str(args.minADEloss))
+
     fde_ade_file = args.checkpoint +'_'+ args.dataset_name +'_n_clusters_' + str(args.n_clusters)  + '_num_K_' +str(args.num_k) + '_minADE_Loss_' + str(args.minADEloss) +'/' + 'fde_ade'
     if min_fde + min_ade > ade + fde:
         min_fde = fde
@@ -353,6 +330,9 @@ for ep in range(args.epoch):
     print('epoch:', ep, 'ade:', ade, 'fde:', fde, 'min_ade:', min_ade, 'min_fde:', min_fde, 'num_traj:', num_traj,
           "min_fde_epoch:", min_fde_epoch)
 
+# ------------------------------------------------------------------------
+# Print results
+# ------------------------------------------------------------------------
 print('**************************************************')
 print('Best Results:')
 
@@ -373,20 +353,17 @@ print('Best 10th percentile minFDE: ',fde_10_percentiles)
 print('Best 90th percentile minADE: ',ade_90_percentiles)
 print('Best 90th percentile minFDE: ',fde_90_percentiles)
 
-
-####################Plot the ECDF of ADE and FDE#######################################
-
+# ------------------------------------------------------------------------
+# Plot the ECDF of ADE and FDE
+# ------------------------------------------------------------------------
 fig = plt.figure(figsize=(9, 4), layout="constrained")
 axs = fig.subplots(1, 2, sharex=True, sharey=True)
 
 # Cumulative distributions of ADE.
 axs[0].ecdf(ade_vector_, label="ADE CDF")
 
-
-
-# cumulative distribution of FDE.
+# Cumulative distribution of FDE.
 axs[1].ecdf(fde_vector_, label="FDE CDF")
-
 
 # Label the figure.
 fig.suptitle("Cumulative distributions")
