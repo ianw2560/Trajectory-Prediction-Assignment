@@ -1,0 +1,27 @@
+
+ (2-layer MLPs)
+**************************************************
+Best Results:
+Best Average minADE:  0.84546816
+Best Average minFDE:  1.6645099
+Best median minADE:  0.60770035
+Best median minFDE:  1.0295011
+Best 10th percentile minADE:  0.25478774
+Best 10th percentile minFDE:  0.29952684
+Best 90th percentile minADE:  1.7113407
+Best 90th percentile minFDE:  3.8122513
+**************************************************
+
+
+Make Q/K/V fully non-linear (3-layer MLPs)
+**************************************************
+Best Results:
+Best Average minADE:  0.91614807
+Best Average minFDE:  1.8466556
+Best median minADE:  0.67243445
+Best median minFDE:  1.2091575
+Best 10th percentile minADE:  0.27547345
+Best 10th percentile minFDE:  0.32721958
+Best 90th percentile minADE:  1.8681817
+Best 90th percentile minFDE:  4.1581078
+**************************************************

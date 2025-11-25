@@ -12,13 +12,14 @@ class Encoder(nn.Module):
         heads,
         forward_expansion,
         dropout=0.1,
-        islinear=True
+        islinear=True,
+        v_is_twolayer=True,
     ):
         super(Encoder, self).__init__()
 
         self.layers = nn.ModuleList(
             [
-                TransformerBlock(embed_size, heads, forward_expansion, dropout, islinear=islinear)
+                TransformerBlock(embed_size, heads, forward_expansion, dropout, islinear=islinear, v_is_twolayer=v_is_twolayer)
                 for _ in range(num_layers)
             ]
         )
@@ -32,10 +33,10 @@ class Encoder(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_size, head, forward_expansion, dropout, islinear=True):
+    def __init__(self, embed_size, head, forward_expansion, dropout, islinear=True, v_is_twolayer=True):
         super(TransformerBlock, self).__init__()
 
-        self.attn = MultihHeadAttention(embed_size, head, islinear=islinear)
+        self.attn = MultihHeadAttention(embed_size, head, islinear=islinear, v_is_twolayer=v_is_twolayer)
         self.norm1 = LayerNorm(embed_size)
         self.norm2 = LayerNorm(embed_size)
         self.feed_forward = FeedForwardLayer(embed_size, forward_expansion)
@@ -74,7 +75,7 @@ class LayerNorm(nn.Module):
 
 
 class MultihHeadAttention(nn.Module):
-    def __init__(self, d_model, h, dropout=0.1, islinear=True):
+    def __init__(self, d_model, h, dropout=0.1, islinear=True, v_is_twolayer=False):
         super(MultihHeadAttention, self).__init__()
 
         assert d_model % h == 0
@@ -82,9 +83,15 @@ class MultihHeadAttention(nn.Module):
         self.d_k = d_model // h
         self.h = h
 
-        self.w_key = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
-        self.w_query = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
-        self.w_value = nn.Linear(d_model, d_model)
+        if v_is_twolayer:
+            self.w_key = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
+            self.w_query = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
+            self.w_value = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
+        else:
+            self.w_key = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
+            self.w_query = nn.Linear(d_model, d_model) if islinear else nn.Sequential(nn.Linear(d_model, d_model), nn.ReLU(), nn.Linear(d_model, d_model))
+            self.w_value = nn.Linear(d_model, d_model) 
+
         self.fc_out = nn.Linear(d_model, d_model)
 
         self.dropout = nn.Dropout(dropout)

@@ -51,7 +51,8 @@ parser.add_argument("--dataset_dimension", type=int, default=5)
 parser.add_argument("--num_k", type=int, default=10)
 parser.add_argument("--ped_num_k", type=int, default=50)
 parser.add_argument("--just_x_y", type=bool, default=True)
-parser.add_argument("--minADEloss", type=bool, default=False)
+parser.add_argument("--minADEloss", type=bool, default=True)
+parser.add_argument("--v_is_twolayer", type=bool, default=True)
 
 args = parser.parse_args()
 
@@ -96,23 +97,23 @@ class MinADE_loss(nn.Module):
         :param traj_gt: ground truth trajectory, shape [batch_size, sequence_length, 2]
         :return err:  average minADE over batch members
         """
-        num_modes = traj.shape[1]  # num_k
-        traj_gt_rpt = traj_gt.unsqueeze(1).repeat(
-            1, num_modes, 1, 1
-        )  # repeat ground truth to have the shape [batch_size, num_modes, sequence_length, 2]
-        traj_ = traj.reshape(
-            traj_gt_rpt.shape
-        )  # reshape predicted trajectories to have the shape [batch_size, num_modes, sequence_length, 2]
+        num_modes = traj.shape[1] # num_k
+        traj_gt_rpt = traj_gt.unsqueeze(1).repeat(1, num_modes, 1, 1) # repeat ground truth to have the shape [batch_size, num_modes, sequence_length, 2]
+        traj_ = traj.reshape(traj_gt_rpt.shape) # reshape predicted trajectories to have the shape [batch_size, num_modes, sequence_length, 2]
 
-        err = (
-            traj_gt_rpt - traj_
-        )  # find the difference between ground truth and predicted trajectories
+        err = traj_gt_rpt - traj_ # find the difference between ground truth and predicted trajectories 
 
         # complete this part: calculate the average displacement error between ground truth and each predicted trajectory for each element of batch,
         # find the minimum average displacement error over proposed trajectories for each element of the batch
         # average it over batch members and return it as loss value
 
-        return err
+        l2_dist = torch.norm(err, dim=-1) # compute L2 distance at each timestep
+        ade_per_traj = l2_dist.mean(dim=-1)  # compute the ADE for each trajectory
+        min_ade_per_sample = torch.min(ade_per_traj, dim=1).values # get minimum ADE
+
+        loss = min_ade_per_sample.mean() # average across batch to get the final loss value
+
+        return loss
 
 
 def get_cls_label(gt, motion_modes, soft_label=True):
@@ -364,6 +365,7 @@ model = TrajectoryModel4(
     int_num_layers_list=[2, 2],
     heads=8,
     forward_expansion=2,
+    v_is_twolayer=args.v_is_twolayer,
 )
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

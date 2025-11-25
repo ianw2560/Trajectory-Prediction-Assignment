@@ -8,21 +8,22 @@ from TUTR_modified.transformer_decoder import Decoder
 
 class TrajectoryModel4(nn.Module):
 
-    def __init__(self, in_size, just_x_y, obs_len, pred_len, embed_size, enc_num_layers, int_num_layers_list, heads, forward_expansion):
+    def __init__(self, in_size, just_x_y, obs_len, pred_len, embed_size, enc_num_layers, int_num_layers_list, heads, forward_expansion, v_is_twolayer):
         super(TrajectoryModel4, self).__init__()
         self.just_x_y = just_x_y
+        self.v_is_twolayer = v_is_twolayer
         if self.just_x_y == True:
             out_size = 2
 
             self.embedding= nn.Linear(in_size*(obs_len)+out_size*(pred_len), embed_size)
 
 
-            self.mode_encoder = Encoder(embed_size, enc_num_layers, heads, forward_expansion, islinear=False)
+            self.mode_encoder = Encoder(embed_size, enc_num_layers, heads, forward_expansion, islinear=False, v_is_twolayer=self.v_is_twolayer)
             self.cls_head = nn.Linear(embed_size, 1)
             self.cls_head2 = nn.Linear(embed_size, 1)
 
             self.nei_embedding = nn.Linear(in_size*obs_len, embed_size)
-            self.social_decoder =  Decoder(embed_size, int_num_layers_list[1], heads, forward_expansion, islinear=False)
+            self.social_decoder =  Decoder(embed_size, int_num_layers_list[1], heads, forward_expansion, islinear=False, v_is_twolayer=self.v_is_twolayer)
             self.reg_head = nn.Linear(embed_size, out_size*pred_len)
 
     def spatial_interaction(self, ped, neis, mask):
