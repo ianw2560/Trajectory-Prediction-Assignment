@@ -53,6 +53,10 @@ parser.add_argument("--ped_num_k", type=int, default=50)
 parser.add_argument("--just_x_y", type=bool, default=True)
 parser.add_argument("--minADEloss", type=bool, default=True)
 parser.add_argument("--v_is_twolayer", type=bool, default=True)
+parser.add_argument('--embed_size', type=int, default=256)
+parser.add_argument('--enc_layers', type=int, default=2)
+parser.add_argument('--heads', type=int, default=8)
+parser.add_argument('--forward_expansion', type=int, default=2)
 
 args = parser.parse_args()
 
@@ -358,13 +362,13 @@ if os.path.exists(motion_modes_file):
 model = TrajectoryModel4(
     in_size=args.dataset_dimension,
     just_x_y=args.just_x_y,
-    obs_len=5,
-    pred_len=8,
-    embed_size=256,
-    enc_num_layers=2,
-    int_num_layers_list=[2, 2],
-    heads=8,
-    forward_expansion=2,
+    obs_len=args.obs_len,
+    pred_len=args.pred_len,
+    embed_size=args.embed_size,
+    enc_num_layers=args.enc_layers,
+    int_num_layers_list=[args.enc_layers, args.enc_layers],
+    heads=args.heads,
+    forward_expansion=args.forward_expansion,
     v_is_twolayer=args.v_is_twolayer,
 )
 

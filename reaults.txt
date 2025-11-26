@@ -25,3 +25,17 @@ Best 10th percentile minFDE:  0.32721958
 Best 90th percentile minADE:  1.8681817
 Best 90th percentile minFDE:  4.1581078
 **************************************************
+
+
+More layers: --embed_size 512 --enc_layers 4 --heads 8 --forward_expansion 4
+**************************************************
+Best Results:
+Best Average minADE:  0.8509346
+Best Average minFDE:  1.6561553
+Best median minADE:  0.6578019
+Best median minFDE:  1.1447105
+Best 10th percentile minADE:  0.28549567
+Best 10th percentile minFDE:  0.33448187
+Best 90th percentile minADE:  1.6252475
+Best 90th percentile minFDE:  3.5308986
+**************************************************
