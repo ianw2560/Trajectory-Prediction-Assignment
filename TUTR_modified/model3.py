@@ -8,14 +8,17 @@ from TUTR_modified.transformer_decoder import Decoder
 
 class TrajectoryModel4(nn.Module):
 
-    def __init__(self, in_size, just_x_y, obs_len, pred_len, embed_size, enc_num_layers, int_num_layers_list, heads, forward_expansion, v_is_twolayer):
+    def __init__(self, in_size, just_x_y, obs_len, pred_len, embed_size, enc_num_layers, int_num_layers_list, heads, forward_expansion, v_is_twolayer, use_dynamic_clustering=False):
         super(TrajectoryModel4, self).__init__()
         self.just_x_y = just_x_y
         self.v_is_twolayer = v_is_twolayer
-        if self.just_x_y == True:
-            out_size = 2
+        self.pred_len = pred_len
+        self.use_dynamic_clustering = use_dynamic_clustering
 
-            self.embedding= nn.Linear(in_size*(obs_len)+out_size*(pred_len), embed_size)
+        if self.just_x_y == True:
+            self.out_size = 2
+
+            self.embedding= nn.Linear(in_size*(obs_len) + self.out_size * (pred_len), embed_size)
 
 
             self.mode_encoder = Encoder(embed_size, enc_num_layers, heads, forward_expansion, islinear=False, v_is_twolayer=self.v_is_twolayer)
@@ -24,7 +27,9 @@ class TrajectoryModel4(nn.Module):
 
             self.nei_embedding = nn.Linear(in_size*obs_len, embed_size)
             self.social_decoder =  Decoder(embed_size, int_num_layers_list[1], heads, forward_expansion, islinear=False, v_is_twolayer=self.v_is_twolayer)
-            self.reg_head = nn.Linear(embed_size, out_size*pred_len)
+            self.reg_head = nn.Linear(embed_size, self.out_size*pred_len)
+
+            self.anchors = None
 
     def spatial_interaction(self, ped, neis, mask):
         
@@ -45,18 +50,35 @@ class TrajectoryModel4(nn.Module):
 
 
         if self.just_x_y == True:
-            ped_obs = ped_obs.unsqueeze(1).repeat(1, motion_modes.shape[0], 1, 1) 
-            # [B K obs_len 2]
-            motion_modes = motion_modes.unsqueeze(0).repeat(ped_obs.shape[0], 1, 1, 1)
-            ped_obs = ped_obs.reshape(ped_obs.shape[0], ped_obs.shape[1], -1)  # [B K obs_len*5]
-            motion_modes = motion_modes.reshape(motion_modes.shape[0], motion_modes.shape[1], -1)
+            device = ped_obs.device
 
+            # Initialize dynamic anchors from K-means one time
+            if self.use_dynamic_clustering:
+                if self.anchors is None:
+                    # motion_modes expected shape: [K, pred_len, 2]
+                    base_modes = motion_modes
+                    # If motion_modes ever has > 2 dims, slice xy as needed:
+                    # base_modes = motion_modes[..., :2]
+                    self.anchors = nn.Parameter(base_modes.detach().clone())
+                modes = self.anchors.to(device)  # [K, pred_len, 2]
+            else:
+                modes = motion_modes.to(device)  # [K, pred_len, 2]
 
-            input_embedder=torch.cat((ped_obs , motion_modes ), dim=-1)
-            ped_embedding=self.embedding(input_embedder)
+            B = ped_obs.shape[0]
+            K = modes.shape[0]
 
-            ped_feat = self.mode_encoder(ped_embedding)  # [B K embed_size]
-            scores = self.cls_head(ped_feat).squeeze()  # [B K]
+            # Build encoder input
+            ped_obs_rep = ped_obs.unsqueeze(1).repeat(1, K, 1, 1)
+            modes_rep = modes.unsqueeze(0).repeat(B, 1, 1, 1)
+
+            ped_obs_flat = ped_obs_rep.reshape(B, K, -1) # [B, K, obs_len*in_size]
+            modes_flat = modes_rep.reshape(B, K, -1) # [B, K, pred_len*2]
+
+            input_embedder = torch.cat((ped_obs_flat, modes_flat), dim=-1)
+            ped_embedding = self.embedding(input_embedder) # [B, K, embed_size]
+
+            ped_feat = self.mode_encoder(ped_embedding) # [B, K, embed_size]
+            scores = self.cls_head(ped_feat).squeeze() # [B, K]
 
             if not test and not minADE_loss:
                 top_k_indices = torch.topk(scores, k=ped_num_k, dim=-1).indices  # [B num_k]

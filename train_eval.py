@@ -57,6 +57,7 @@ parser.add_argument('--embed_size', type=int, default=256)
 parser.add_argument('--enc_layers', type=int, default=2)
 parser.add_argument('--heads', type=int, default=8)
 parser.add_argument('--forward_expansion', type=int, default=2)
+parser.add_argument("--use_dynamic_clustering", action="store_true")
 
 args = parser.parse_args()
 
@@ -170,7 +171,14 @@ def train(
         neis_obs = nei_traj[:, :, : args.obs_len]
 
         with torch.no_grad():
-            soft_label, closest_mode_indices = get_cls_label(gt.cuda(), motion_modes)
+
+            # Check if dynamic clustering is enabled
+            if args.use_dynamic_clustering and hasattr(model, "anchors") and model.anchors is not None:
+                current_modes = model.anchors.detach() # [K, pred_len, 2]
+            else:
+                current_modes = motion_modes  # [K, pred_len, 2]
+
+            soft_label, closest_mode_indices = get_cls_label(gt.cuda(), current_modes)
 
         optimizer.zero_grad()
         pred_traj, scores = model(
