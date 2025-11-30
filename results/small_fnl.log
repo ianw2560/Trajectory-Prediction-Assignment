@@ -1,0 +1,11 @@
+**************************************************
+Best Results:
+Best Average minADE: 0.8927711844444275
+Best Average minFDE: 1.7688238620758057
+Best median minADE: 0.6288645267486572
+Best median minFDE: 1.0224303007125854
+Best 10th percentile minADE: 0.2750558853149414
+Best 10th percentile minFDE: 0.3114113211631775
+Best 90th percentile minADE: 1.914487361907959
+Best 90th percentile minFDE: 4.223331451416016
+**************************************************
