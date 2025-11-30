@@ -2,7 +2,6 @@
 *.out
 *.pdf
 *.toc
-*.log
 *.fls
 *.fdb_latexmk
 **/__pycache__/*/**
