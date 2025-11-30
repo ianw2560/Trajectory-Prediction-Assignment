@@ -7,6 +7,7 @@ import random
 import time
 import numpy as np
 import torch
+import pandas as pd
 import statistics
 import math
 import sys
@@ -527,7 +528,8 @@ print("Best 90th percentile minADE: ", ade_90_percentiles)
 print("Best 90th percentile minFDE: ", fde_90_percentiles)
 print("**************************************************")
 
-with open(f"{args.output_name}.log", "w") as f:
+os.makedirs("results", exist_ok=True)
+with open(f"results/{args.output_name}.log", "w") as f:
     f.write("**************************************************\n")
     f.write("Best Results:\n")
     f.write(f"Best Average minADE: {ade_mean}\n")
@@ -561,4 +563,32 @@ for ax in axs:
     ax.set_ylabel("Probability of occurrence")
     ax.label_outer()
 
-plt.savefig(f"{args.output_name}.png", dpi=300)
+os.makedirs("images", exist_ok=True)
+plt.savefig(f"images/{args.output_name}.png", dpi=300)
+
+# ------------------------------------------------------------------------
+# Write out csv of results
+# ------------------------------------------------------------------------
+row_df = pd.DataFrame(
+    {
+        "ade_mean": [ade_mean],
+        "fde_mean": [fde_mean],
+        "ade_median": [ade_median],
+        "fde_median": [fde_median],
+        "ade_p10": [ade_10_percentiles],
+        "fde_p10": [fde_10_percentiles],
+        "ade_p90": [ade_90_percentiles],
+        "fde_p90": [fde_90_percentiles],
+    },
+    index=[args.output_name],
+)
+
+# Write row to csv file
+csv_path = "metrics.csv"
+if os.path.exists(csv_path):
+    df = pd.read_csv(csv_path, index_col=0)
+    df.loc[args.output_name] = row_df.iloc[0]
+else:
+    df = row_df
+
+df.to_csv(csv_path)
