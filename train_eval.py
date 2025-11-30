@@ -58,6 +58,7 @@ parser.add_argument('--enc_layers', type=int, default=2)
 parser.add_argument('--heads', type=int, default=8)
 parser.add_argument('--forward_expansion', type=int, default=2)
 parser.add_argument("--use_dynamic_clustering", action="store_true")
+parser.add_argument("-o", "--output_name", type=str, default="results")
 
 args = parser.parse_args()
 
@@ -526,6 +527,19 @@ print("Best 90th percentile minADE: ", ade_90_percentiles)
 print("Best 90th percentile minFDE: ", fde_90_percentiles)
 print("**************************************************")
 
+with open(f"{args.output_name}.log", "w") as f:
+    f.write("**************************************************\n")
+    f.write("Best Results:\n")
+    f.write(f"Best Average minADE: {ade_mean}\n")
+    f.write(f"Best Average minFDE: {fde_mean}\n")
+    f.write(f"Best median minADE: {ade_median}\n")
+    f.write(f"Best median minFDE: {fde_median}\n")
+    f.write(f"Best 10th percentile minADE: {ade_10_percentiles}\n")
+    f.write(f"Best 10th percentile minFDE: {fde_10_percentiles}\n")
+    f.write(f"Best 90th percentile minADE: {ade_90_percentiles}\n")
+    f.write(f"Best 90th percentile minFDE: {fde_90_percentiles}\n")
+    f.write("**************************************************\n")
+
 # ------------------------------------------------------------------------
 # Plot the ECDF of ADE and FDE
 # ------------------------------------------------------------------------
@@ -547,4 +561,4 @@ for ax in axs:
     ax.set_ylabel("Probability of occurrence")
     ax.label_outer()
 
-plt.show()
+plt.savefig(f"{args.output_name}.png", dpi=300)
