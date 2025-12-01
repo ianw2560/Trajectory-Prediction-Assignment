@@ -10,14 +10,7 @@
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
 
-\title{Trajectory Prediction}
-
-% \author{\IEEEauthorblockN{Ian Wallace}
-% \IEEEauthorblockA{Department of ECE} \\
-% \textit{University of Central Florida}\\
-% Orlando, Florida \\
-% ia106173@ucf.edu
-% }
+\title{Trajectory Prediction Code Modifications}
 
 \author{\IEEEauthorblockN{Ian Wallace}
 \IEEEauthorblockA{\textit{Department of ECE} \\
@@ -27,8 +20,68 @@ ia106173@ucf.edu}
 }
 
 \maketitle
+
 \section{Introduction}
+In this work, we explore three modifications to the Transformer architecture addressing the issues above: (1) an architectural change in the placement of normalization (and other minor adjustments) to improve training stability, (2) making the Q, K, V projections fully non-linear by using learnable multi-layer networks instead of single linear layers, and (3) incorporating a dynamic k-means clustering mechanism within the attention layers to sparsify connections and improve efficiency on long sequences. We implement these modifications and evaluate their impact on model performance and efficiency. The following sections describe each modification in detail and present experimental results comparing the modified models to the standard Transformer baseline.
+
+\section{Modifications}
+
+\subsection{Transformer Architecture}
+
+The first modification to the original trajectory prediction code we performed was changing the model architecture. We kept the overall TUTR design fixed but systematically varied the core Transformer hyperparameters: the embedding size, the number of encoder/decoder layers, the number of attention heads, and the width of the feed-forward blocks. The baseline model uses an embedding size of 256, two encoder/decoder layers, eight attention heads, and a feed-forward expansion factor of 2. This corresponds to the default valuees in the original paper. Starting from this baseline, we defined three architecture variants:
+
+\begin{enumerate}
+\item An overall smaller model.
+\item A model with a deeper encoder/decoder.
+\item A wider model with stronger feed-forward blocks.
+\end{enumerate}
+
+The overall smaller model reduces the dimensionality of the token representations and the number of attention heads, effectively shrinking both the self-attention and feed-forward components. For the second configuration, we keep the width of the model the same as the baseline, but double the depth of the encoder and decoder to 256. The wider model increases the embedding size to 512 and substantially widens the intermediate feed-forward layers freom 2 to 4. The specific parameters for each configuration can be seen in Table \ref{tab:configurations}. Across all configurations, the rest of the pipeline is unchanged. We vary only these architectural parameters in order to isolate and observe their impact on the model performance.
+
+\begin{table}[htb]
+  \centering
+  \caption{Transformer architecture configurations}
+  \label{tab:configurations}
+  \begin{tabular}{lllll}
+    \hline
+    \textbf{Configuration} & \textbf{\shortstack{Embed\\Size}} &
+      \textbf{\shortstack{Enc./Dec.\\Layers}} &
+      \textbf{Heads} &
+      \textbf{\shortstack{Forward\\Expansion}} \\
+    \hline
+    Baseline & 256 & 2 & 8 & 2 \\
+    Small    & 128 & 2 & 4 & 2 \\
+    Deep     & 256 & 4 & 8 & 2 \\
+    Wide     & 512 & 2 & 8 & 4 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\subsection{Fully Non-linear QVK Projections}
+
+For our second modification, we implement fully non-linear QVK projections. In the Transformer implementation from the original paper, the query (Q), key (K), and value (V) vectors are obtained by applying a single linear layer to the input embeddings. That is, each token representation is projected once to produce Q, once to produce K, and once to produce V. This keeps the attention module relatively simple, but it also means that the transformations used to construct Q, K, and V are purely linear. In the original code provided for this assignment, the query and key vectors have a two-layer MLP of the form Linear $\Rightarrow$ ReLU $\Rightarrow$ Linear, while the value vector remains purely linear.
+
+To make this fully non-linear, we modified the multi-head attention classes in the \texttt{transformer\_encoder.py} and \texttt{transformer\_decoder.py} files so that the two-layer MLP, as described in the previous paragraph, is applied to the value vector. Additionally, we provided a command line flag \texttt{v\_is\_twolayer} that controls whether or not the two-layer MLP is applied to the value vector. This means that before a vector participates in attention as a query, key, or value, it is passed through a non-linear transformation that can model more complex relationships than a single matrix multiplication.
+
+This modification increases the expressiveness of the attention layers. Instead of computing attention scores over linearly transformed embeddings, the model now first passes each token through a small non-linear network specific to its role (query, key, or value). This gives each head additional capacity to reshape the representation space before compatibility scores are computed, potentially enabling richer attention patterns and more informative value updates.
+
+\subsection{Dynamic K-means Clustering}
+
+For our final modification, we implement dynamic K-means clustering. In the Transformer implementation from the original paper, the set of motion anchors is computed once offline using K-means clustering over the training trajectories. These cluster centers are then stored as a fixed tensor called \texttt{motion\_modes} and used throughout training and evaluation as static prototypes of future motion. The model learns to select and refine these precomputed anchors, but the anchors themselves never change; they do not adapt as the network parameters or data distribution evolve.
+
+To implement the dynamic K-means clustering, we modified the anchor handling in \texttt{model3.py} to make the anchors learnable and dynamic while still initializing them from K-means. When the user passes the \texttt{--use\_dynamic\_clustering} CLI flag, the first time the model's forward pass is called it creates a parameter self.anchors by cloning the precomputed \texttt{motion\_modes} tensor and wrapping it in nn.Parameter. Now, during future iterations during training, the model no longer uses the raw, precomputed \texttt{motion\_modes} tensor and instead uses the self.anchors tensor, which is updated through gradient descent like any other weight in the network. This means that K-means initializes the anchors, but the final anchor values are updated through backpropagation, instead of remaining static.
+
+When the \texttt{--use\_dynamic\_clustering} CLI flag is not passed, the model falls back to the original behavior and treats \texttt{motion\_modes} as a fixed, non-trainable set of K-means centroids.
+
+\section{Results}
+
+\subsection{Transformer Architecture}
 
 
+\subsection{QVK Projections Fully Non-linear}
+
+\subsection{Dynamic K-means Clustering}
+
+\section{Conclusion}
 
 \end{document}
