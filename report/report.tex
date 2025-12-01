@@ -57,6 +57,8 @@ The overall smaller model reduces the dimensionality of the token representation
   \end{tabular}
 \end{table}
 
+
+
 \subsection{Fully Non-linear QVK Projections}
 
 For our second modification, we implement fully non-linear QVK projections. In the Transformer implementation from the original paper, the query (Q), key (K), and value (V) vectors are obtained by applying a single linear layer to the input embeddings. That is, each token representation is projected once to produce Q, once to produce K, and once to produce V. This keeps the attention module relatively simple, but it also means that the transformations used to construct Q, K, and V are purely linear. In the original code provided for this assignment, the query and key vectors have a two-layer MLP of the form Linear $\Rightarrow$ ReLU $\Rightarrow$ Linear, while the value vector remains purely linear.
@@ -75,12 +77,59 @@ When the \texttt{--use\_dynamic\_clustering} CLI flag is not passed, the model f
 
 \section{Results}
 
+In this section, we will analyze the results of our modification using various metrics, including minimum average displacement error (minADE) and minimum final displacement error (minFDE).
+
 \subsection{Transformer Architecture}
 
+Modifying the model architecture shows better overall perforamnce for wider models over both smaller and deeper ones. When comparing the four base configurations without dynamic clustering or no fully non-linear QVK, the wide model achieves the lowest mean ADE and FDE, slightly outperforming the baseline while using the same number of layers. In contrast, the deep model does not achieve better trajectory quality with extra depth and actually degrades both ADE and FDE relative to the baseline. The small configuration, which reduces both embedding size and number of heads, performs the worst by far, without the use of dynamic clustering or fully non-linear QVK. These results can be seen in the top left subfigure of Figure \ref{fig:ade_mean} and Figure \ref{fig:fde_mean}.
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3.4in]{../images/ade_mean_2x2.png}
+    \caption{The average minADE for each model configuration. The configuration with the smallest error is colored red.}
+    \label{fig:ade_mean}
+\end{figure}
 
 \subsection{QVK Projections Fully Non-linear}
 
+Enabling fully non-linear QVK projections has an effect on performance that depends strongly on the underlying architecture. For the wide model, adding fully non-linear Q, K, and V slightly improves mean ADE compared to its linear counterpart and roughly matches its FDE, making the wide architecture with fully non-linear QVK (wide\_fnl) the strongest configurations overall. For the small architecture, fully non-linear QVK clearly helps, as both ADE and FDE improve relative to the small architecture without the change. However, the small architecture is still the weakest of the four.
+
+However, for the baseline and deep models, fully non-linear QVK ends up actually harming the results. Both baseline\_fnl and deep\_fnl show slightly higher ADE and FDE than their linear-QVK counterparts, even though the rest of the architecture is unchanged. This suggests that simply increasing the complexity of QVK mappings does not guarantee an improvement. In models of this size, it may lead to overfitting. When dynamic clustering is also enabled, the pattern persists. The small architecture improves signifigantly, but the other three architectures show worse performance compared to those architectures without those modifications enabled.
+
+Overall, fully non-linear QVK is most effective in the small and wide architectures, but it do not improve performance across all model sizes. These results can be seen in the bottom left subfigure of Figure \ref{fig:ade_mean} and Figure \ref{fig:fde_mean}.
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=3.4in]{../images/fde_mean_2x2.png}
+    \caption{The FDE mean for each model configuration. The configuration with the smallest error is colored red.}
+    \label{fig:fde_mean}
+\end{figure}
+
 \subsection{Dynamic K-means Clustering}
+
+Enabling dynamic clustering yields mixed results. For the baseline and wide architectures, switching from static K-means anchors to learnable anchors generally leads to slightly higher ADE and FDE. In contrast, the deep architecture actually benefits somewhat from dynamic clustering. It achieves lower ADE and FDE than the normal deep architectures, suggesting that the additional flexibility in anchor locations can help deeper networks make better use of their capacity.
+
+The most positive impact of dynamic clustering appears in the small configurations. Both the small architectures with dynamic clustering and with both dynamic clustering and fully non-linear QVK perform substantially better than the normal small architecture in terms of both ADE and FDE. When combined with fully non-linear QVK, dynamic clustering also modestly improves the deep architecture, but it still does not allow deep architecture configurations to surpass the wide architectures. In summary, dynamic K-means clustering in its current form is beneficial primarily for the smallest and deepest models, while for well-scaled wide and baseline architectures it provides little advantage and can slightly degrade performance. These results can be seen in the top right subfigure of Figure \ref{fig:ade_mean} and Figure \ref{fig:fde_mean}.
+
+\subsection{Cumulative Distribution Analysis}
+
+In this section, we do a brief analysis of the cumulative distribution graphs of two model configurations. To simplify our analysis, we chose to look at the cumulative distribution for the overall worst configuration, the small architecture (Figure \ref{fig:small_cumulative_distribution}), and the overall best configuration, the wide architecture with fully non-linear QVK (Figure \ref{fig:wide_fnl_cumulative_distribution}).
+
+The cumulative distributions for the small architecture without dynamic clustering or fully non-linear QVK show that its errors are both larger on average and significantly more spread out. The shape of these curves reflects a model that not only has worse mean performance but also suffers from a substantial number of difficult or failure cases. In contrast, the cumulative distributions for the wide architecture with fully non-linear QVK are both steeper and more compact. The ADE CDF plot goes up much more quickly toward 1, meaning that a larger percentage of trajectories achieve a low average error. The FDE CDF plot shows similar behavior. Overall, Figure \ref{fig:wide_fnl_cumulative_distribution} shows that wide\_fnl  not only improves mean ADE and FDE, but also tightens the error distribution, resulting in more reliable predictions across the testing dataset.
+
+\begin{figure}[tb]
+    \centering
+    \includegraphics[width=3.3in]{../images/small.png}
+    \caption{The worst overall model (the small configuration).}
+    \label{fig:small_cumulative_distribution}
+\end{figure}
+
+\begin{figure}[tb]
+    \centering
+    \includegraphics[width=3.3in]{../images/wide_fnl.png}
+    \caption{The best overall model (the wide fully non-linear configuration).}
+    \label{fig:wide_fnl_cumulative_distribution}
+\end{figure}
 
 \section{Conclusion}
 
