@@ -76,5 +76,5 @@ def plot_min_ade_all(metric, csv_path="metrics.csv", out_path="images/ade_mean_2
     fig.tight_layout()
     fig.savefig(out_path, dpi=300)
 
-plot_min_ade_all("ade_mean", csv_path="metrics_sorted.csv", out_path="images/ade_mean_2x2.png")
-plot_min_ade_all("fde_mean", csv_path="metrics_sorted.csv", out_path="images/fde_mean_2x2.png")
+plot_min_ade_all("ade_mean", csv_path="metrics_sorted.csv", out_path="images/ade_mean_summary.png")
+plot_min_ade_all("fde_mean", csv_path="metrics_sorted.csv", out_path="images/fde_mean_summary.png")
