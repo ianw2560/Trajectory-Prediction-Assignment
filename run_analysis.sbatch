@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
 #SBATCH --time=3:00:00
-#SBATCH --array=0-15
+#SBATCH --array=0-15 
 #SBATCH -o logs/traj_analysis_%A_%a.out
 
 # List of commands
