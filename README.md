@@ -24,3 +24,7 @@ To run all 16 modified configurations as job array on the UCF Newton GPU cluster
 ```bash
 sbatch run_analysis.sbatch
 ```
+
+## Report
+
+To build the LaTeX report, run `latexmk` from within the `./report` directory.
