@@ -3,6 +3,8 @@
 *.pdf
 *.toc
 *.fls
+*.log
+!results/*.log
 *.fdb_latexmk
 **/__pycache__/*/**
 *.pyc
